@@ -3,6 +3,8 @@ package com.example.highwayhoppers
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -40,8 +42,42 @@ class GameView(context: Context, attrs: AttributeSet) : View(context, attrs) {
     private val random = Random(System.currentTimeMillis())
     private val baseObstacleSpeed = 5
     private var score = 0
-    private val player = Player(500, 1800, 100, 100, 2)
-    private val police = Catcher(550 , 2100 , 100)
+    private var lives : Int = 2
+
+    private var screenWidth : Int
+    private var screenHeight : Int
+
+
+
+    fun setAllowedLives( chances : Int ){
+        this.lives = chances
+    }
+
+
+    private val player : Player
+    private val police : Catcher
+
+   /*
+
+    private var player : Bitmap? = null
+    private var police : Bitmap? = null
+
+
+
+
+    fun setplayerBitmap(bitmap: Bitmap){
+        player = bitmap
+        invalidate()
+    }
+
+    fun setpoliceBitmap(bitmap: Bitmap){
+        police = bitmap
+        invalidate()
+    }
+
+
+    */
+
     private val coins = mutableListOf<Coins>()
     private val medic = mutableListOf<Medic>()
     private var coinscollected = 0
@@ -49,6 +85,22 @@ class GameView(context: Context, attrs: AttributeSet) : View(context, attrs) {
     var newHighcore : Int = 0
 
     init {
+
+        val displayMetrics = context.resources.displayMetrics
+        screenWidth = displayMetrics.widthPixels
+        screenHeight = displayMetrics.heightPixels
+
+        player = Player(screenWidth/2 - (screenWidth * 0.1).toInt() /2
+            , 3*(screenHeight/4) - ((screenHeight * 0.1).toInt()) /2 /2
+            , (screenWidth * 0.1).toInt()
+            , (screenWidth * 0.1).toInt(),
+            lives)
+
+        police = Catcher(screenWidth / 2
+            , screenHeight - (screenHeight * 0.1).toInt()
+            , (screenWidth * 0.09).toInt() )
+
+
         // Initialize the game loop
         postInvalidateOnAnimation()
     }
@@ -106,12 +158,13 @@ class GameView(context: Context, attrs: AttributeSet) : View(context, attrs) {
             if(medicGathering(player ,k)){
                 if (player.lives < 2){
                     player.lives += 1
-                    catcherRelocation(police)
+                    police.y = screenHeight - (screenHeight * 0.1).toInt()
                     medicToRemove.add(k)
                 }else{
                     medicToRemove.add(k)
                 }
             }
+            medic.removeAll(medicToRemove)
         }
 
 
@@ -134,7 +187,7 @@ class GameView(context: Context, attrs: AttributeSet) : View(context, attrs) {
             // Check for collision with player
             if (checkCollision(player, obstacle)) {
                 player.lives -= 1
-                police.y = 2000
+                police.y = (screenHeight - (1.5*(screenHeight * 0.1)).toInt())
                 obstaclesToRemove.add(obstacle)
                 if (player.lives <= 0) {
                     handleGameOver()
@@ -188,6 +241,7 @@ class GameView(context: Context, attrs: AttributeSet) : View(context, attrs) {
         postInvalidateOnAnimation()
     }
 
+
     private fun drawScoreAndLives(canvas: Canvas) {
         (context as? Activity)?.findViewById<TextView>(R.id.scoreboard)?.let { scoreText ->
             scoreText.text = score.toString()
@@ -238,7 +292,7 @@ class GameView(context: Context, attrs: AttributeSet) : View(context, attrs) {
     }
 
     private fun generateCoins(){
-        val coinRadius = 50
+        val coinRadius = police.radius / 2
         val lanePositions = listOf(width / 6, width / 2, 4 * (width / 5))
         val randomNumber = Random.nextInt(lanePositions.size)
         var selectedLane : Int
@@ -250,7 +304,7 @@ class GameView(context: Context, attrs: AttributeSet) : View(context, attrs) {
     }
 
     private fun generateMedics(){
-        val radius = 50
+        val radius = police.radius / 2
         val lanePositions = listOf(width / 6, width / 2, 4 * (width / 5))
         val randomNumber = Random.nextInt(lanePositions.size)
         var selectedLane = lanePositions[randomNumber]
@@ -266,8 +320,8 @@ class GameView(context: Context, attrs: AttributeSet) : View(context, attrs) {
 
     }
     private fun generateObstacle() {
-        val obstacleWidth = 100
-        val obstacleHeight = 100
+        val obstacleWidth = player.width
+        val obstacleHeight = player.height
 
         // Define possible lane positions based on view width (assuming horizontal lanes)
         val lanePositions = listOf(width / 6, width / 2, 4 * (width / 5))
@@ -346,10 +400,24 @@ class GameView(context: Context, attrs: AttributeSet) : View(context, attrs) {
         }
         return true
     }
+    private fun updatingGameElements(){
+        player.width = (screenWidth*0.1).toInt()
+        player.height =(screenWidth*0.1).toInt(
+        )
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration?) {
+        super.onConfigurationChanged(newConfig)
+        val displayMetrics = resources.displayMetrics
+        screenWidth = displayMetrics.widthPixels
+        screenHeight = displayMetrics.heightPixels
+        updatingGameElements()
+    }
 }
 
 data class Obstacle(var x: Int, var y: Int, val width: Int, val height: Int)
-data class Player(var x: Int, var y: Int, val width: Int, val height: Int, var lives: Int)
+data class Player(var x: Int, var y: Int, var width: Int, var height: Int, var lives: Int)
 data class Catcher(var x : Int , var y : Int , val radius : Int)
 data class Coins(var x : Int , var y : Int , val radius : Int)
 data class Medic(var x : Int , var y : Int , val radius : Int)
+
